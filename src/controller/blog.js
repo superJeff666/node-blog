@@ -18,17 +18,36 @@ const getList = (author, keyword) => {
   ];
 };
 
-const getDetail =  (id) => {
-    return {
-        id: 1,
-        title: "标题1",
-        content: "内容1",
-        createTime: 1589897900718,
-        author: "jeff"
-      }
-}
+const getDetail = id => {
+  return {
+    id: 1,
+    title: "标题1",
+    content: "内容1",
+    createTime: 1589897900718,
+    author: "jeff"
+  };
+};
+
+const newBlog = (blogData = {}) => {
+  console.log("newBlog");
+  return {
+    id: 3
+  };
+};
+
+const updateBlog = (id, blogData = {}) => {
+  console.log("update", id, blogData);
+  return true;
+};
+
+const deleteBlog = id => {
+  return true;
+};
 
 module.exports = {
   getList,
-  getDetail
+  getDetail,
+  newBlog,
+  updateBlog,
+  deleteBlog
 };
