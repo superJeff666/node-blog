@@ -2,6 +2,7 @@ const querystring = require("querystring");
 const handleBlogRouter = require("./src/router/blog");
 const handleUserRouter = require("./src/router/user");
 const { get, set } = require("./src/db/redis");
+const { access } = require("./src/utils/log");
 
 //session 数据
 const SESSION_DATA = {};
@@ -41,6 +42,9 @@ const getPostData = req => {
 };
 
 const serverHandle = (req, res) => {
+  //记录access log
+  access(`${req.method} -- ${req.url} -- ${req.headers['user-agent']} -- ${Date.now()}`)
+
   //设置返回的JSON
   res.setHeader("Content-type", "application/json");
 
@@ -90,68 +94,69 @@ const serverHandle = (req, res) => {
 
   //获取session
   req.sessionId = userId;
-  get(req.sessionId).then(sessionData => {
-    if (sessionData == null) {
-      //初始化 redis 中的 session 值
-      set(req.sessionId, {});
+  get(req.sessionId)
+    .then(sessionData => {
+      if (sessionData == null) {
+        //初始化 redis 中的 session 值
+        set(req.sessionId, {});
 
-      //设置session
-      req.session = {};
-    } else {
-      //设置session
-      req.session = sessionData;
-    }
-    console.log('req.session',req.session);
+        //设置session
+        req.session = {};
+      } else {
+        //设置session
+        req.session = sessionData;
+      }
+      console.log("req.session", req.session);
 
-    //处理 post data
-    return getPostData(req)
-  })
-  .then(postData => {
-    req.body = postData;
-    //处理blog路由
-    // const blogData = handleBlogRouter(req, res);
-    // if (blogData) {
-    //   res.end(JSON.stringify(blogData));
-    //   return;
-    // }
-    const blogResult = handleBlogRouter(req, res);
-    if (blogResult) {
-      blogResult.then(blogData => {
-        if (needSetCookie) {
-          res.setHeader(
-            "Set-Cookie",
-            `userid=${userId};path=/; httpOnly; expires=${getCookieExpires()}`
-          );
-        }
-        res.end(JSON.stringify(blogData));
-      });
-      return;
-    }
+      //处理 post data
+      return getPostData(req);
+    })
+    .then(postData => {
+      req.body = postData;
+      //处理blog路由
+      // const blogData = handleBlogRouter(req, res);
+      // if (blogData) {
+      //   res.end(JSON.stringify(blogData));
+      //   return;
+      // }
+      const blogResult = handleBlogRouter(req, res);
+      if (blogResult) {
+        blogResult.then(blogData => {
+          if (needSetCookie) {
+            res.setHeader(
+              "Set-Cookie",
+              `userid=${userId};path=/; httpOnly; expires=${getCookieExpires()}`
+            );
+          }
+          res.end(JSON.stringify(blogData));
+        });
+        return;
+      }
 
-    //处理user路由
-    // const userData = handleUserRouter(req, res);
-    // if (userData) {
-    //   res.end(JSON.stringify(userData));
-    //   return;
-    // }
-    const userResult = handleUserRouter(req, res);
-    if (userResult) {
-      userResult.then(userData => {
-        if (needSetCookie) {
-          res.setHeader(
-            "Set-Cookie",
-            `userid=${userId};path=/; httpOnly; expires=${getCookieExpires()}`
-          );
-        }
-        res.end(JSON.stringify(userData));
-      });
-      return;
-    }
+      //处理user路由
+      // const userData = handleUserRouter(req, res);
+      // if (userData) {
+      //   res.end(JSON.stringify(userData));
+      //   return;
+      // }
+      const userResult = handleUserRouter(req, res);
+      if (userResult) {
+        userResult.then(userData => {
+          if (needSetCookie) {
+            res.setHeader(
+              "Set-Cookie",
+              `userid=${userId};path=/; httpOnly; expires=${getCookieExpires()}`
+            );
+          }
+          res.end(JSON.stringify(userData));
+        });
+        return;
+      }
 
-    //未命中路由，返回404
-    res.writeHead(404, { "Conten-type": "text/plain" });
-    res.write("404 Not Found\n");
-    res.end();
-  });
+      //未命中路由，返回404
+      res.writeHead(404, { "Conten-type": "text/plain" });
+      res.write("404 Not Found\n");
+      res.end();
+    });
 };
 module.exports = serverHandle;
